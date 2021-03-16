@@ -1,0 +1,374 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ArcGIS API for JavaScript Hello World App</title>
+  <style>
+    html, body, #viewDiv, #viewDiv2{
+      padding: 0;
+      margin: 0;
+	  height: 950px;
+	  width: 850px;
+    }
+	.esri-editor .esri-item-list_scroller{
+		max-height:350px;
+	}
+  </style>  
+  
+  <script type="text/javascript">
+	var winHeight = 0;
+	var winWidth = 0;
+	if(window.innerHeight||window.innerWidth) {
+		winWidth = window.innerWidth;
+		winHeight = window.innerHeight;
+	} else if ((document.body) && (document.body.clientHeight)) {
+		winHeight = document.body.clientHeight;
+	}
+	//通过深入Document内部对body进行检测，获取浏览器窗口高度
+	if((document.documentElement && document.documentElement.clientHeight)||(document.documentElement && document.documentElement.clientWidth)){
+      winHeight = document.documentElement.clientHeight;
+	  winWidth = document.documentElement.clientWidth;
+	}	   
+  </script>
+  
+  <script type="text/javascript">
+	var dojoConfig = {
+		async: false, //是否异步
+		parseOnLoad: true,
+		packages: [{ //解释：require(["js/.."],function(){}) 中  js/ 即为 location的值
+			name: "/js",
+			location: location.pathname.replace(/\/[^/]*$/,'')+'/js' ////对应的路径
+		}]
+	}
+  </script>
+  <!--
+  <link rel="stylesheet" href="https://js.arcgis.com/4.18/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.18/"></script>
+  -->
+  <link rel="stylesheet" href="http://localhost:8080/WebGIS/arcgis_js_api/library/4.18/esri/css/main.css">
+  <script src="http://localhost:8080/WebGIS/arcgis_js_api/library/4.18/init.js"></script>
+  <script>
+    require([
+      "esri/Map",
+	  "esri/config",
+	  "esri/request",
+      "esri/Color",
+	  "esri/views/SceneView",
+	  "esri/widgets/LayerList",
+      "esri/layers/BaseTileLayer",
+      "esri/views/MapView",
+	  "esri/layers/FeatureLayer",
+	  "esri/widgets/Search",
+	  "esri/symbols/SimpleFillSymbol",
+	  "esri/renderers/UniqueValueRenderer",
+	  "esri/widgets/Editor",
+	  "esri/geometry/Extent",
+	  "esri/geometry/Point",
+	  "esri/geometry/Polyline",
+	  "esri/geometry/Polygon",
+	  
+	  "dojo/domReady!"
+    ], function(
+	  Map, esriConfig, esriRequest, Color, SceneView, 
+	  LayerList, BaseTileLayer, MapView, FeatureLayer, Search, 
+	  SimpleFillSymbol, UniqueValueRenderer, Editor, Extent, Point, 
+	  Polyline, Polygon
+	) {	    
+		var TintLayer = BaseTileLayer.createSubclass({
+		  properties: {
+		    urlTemplate: null,
+			tint: {
+			  value: null,
+			  type: Color
+			}
+		  },
+		  
+		  getTileUrl: function(level, row, col) {
+            return this.urlTemplate.replace("{z}", level).replace("{x}",
+              col).replace("{y}", row);
+          },
+		  
+		  fetchTile: function(level, row, col) {
+            var url = this.getTileUrl(level, row, col);
+            return esriRequest(url, {
+              responseType: "image",
+              allowImageDataAccess: true
+            }).then(function(response) {
+              var image = response.data;
+              var width = this.tileInfo.size[0];
+              var height = this.tileInfo.size[0]; 
+              // create a canvas with 2D rendering context
+              var canvas = document.createElement("canvas");
+              var context = canvas.getContext("2d");
+              canvas.width = width;
+              canvas.height = height;  
+              // Draw the blended image onto the canvas.
+              context.drawImage(image, 0, 0, width, height);
+              return canvas;
+            }.bind(this));
+          }
+		});
+		
+		//跨域
+		esriConfig.request.corsEnabledServers.push("webst01.is.autonavi.com");
+	    
+		// Create a new instance of the TintLayer and set its properties
+		var gd_vec_TileLayer = new TintLayer({
+		  urlTemplate: "http://wprd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}",
+		  tint: new Color("#004FBB"),
+		  title: "高德地图",
+		  visible: true
+		});
+		
+		var gd_img_TileLayer = new TintLayer({
+		  urlTemplate: "http://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+		  tint: new Color("#004FBB"),
+		  title: "高德影像"
+		});
+		
+		var tdt_img_TileLayer = new TintLayer({
+		  urlTemplate: "http://t7.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  //urlTemplate: "http://t0.tianditu.gov.cn/img_c/wmts?tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#004FBB"),
+		  title: "天地图影像"
+		});
+
+		var tdt_img_i_TileLayer = new TintLayer({
+		  urlTemplate: "http://t0.tianditu.gov.cn/cia_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cia&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX=A{z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#004FBB"),
+		  title: "天地图影像注记"
+		});
+		
+		var tdt_vec_TileLayer = new TintLayer({
+		  urlTemplate: "http://t7.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#004FBB"),
+		  title: "天地图",
+		  visible: false
+		});
+		
+		var tdt_vec_i_TileLayer = new TintLayer({
+		  urlTemplate: "http://t7.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#004FBB"),
+		  title: "天地图注记",
+		  visible: false
+		});
+		
+		var tdt_ter_w_TileLayer = new TintLayer({
+		  urlTemplate: "http://t7.tianditu.gov.cn/ter_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ter&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#BF02BE"),
+		  title: "天地图地形",
+		  visible: false
+		});
+		
+		var tdt_cta_w_TileLayer = new TintLayer({
+		  urlTemplate: "http://t7.tianditu.gov.cn/cta_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cta&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=3ee84ab4070c9cb7eb7e485c80add360",
+		  tint: new Color("#BF02BE"),
+		  title: "天地图地形注记",
+		  visible: false
+		});
+		
+		var gg_img_TileLayer = new TintLayer({
+		  urlTemplate: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+		  tint: new Color("#004FBB"),
+		  title: "谷歌混合",
+		  visible: true
+		});
+		
+			
+		// add the new instance of the custom tile layer the map
+		var map2 = new Map({
+		  layers: [gd_vec_TileLayer, tdt_img_TileLayer, tdt_img_i_TileLayer,tdt_vec_TileLayer, tdt_vec_i_TileLayer, tdt_ter_w_TileLayer, tdt_cta_w_TileLayer, gg_img_TileLayer]
+		});
+	 
+		var view2 = new MapView({
+		  container: "viewDiv2",
+		  map: map2,
+		  //center: [0, 30],
+		  //zoom: 3
+		  extent:{
+			xmin: 8182109,
+			ymin: 700650,
+			xmax: 15037984,
+			ymax: 7053031,
+			spatialReference: {wkid:102100}
+	    }
+	  });
+		  
+	  var layerList = new LayerList({
+		view: view2,
+	  });
+	  
+	  view2.ui.add(layerList, "top-right");
+	  
+	  //var map = new Map({basemap: "hybrid"});
+	  var map = new Map({layers: [gg_img_TileLayer]});
+	  //var map = new Map({layers: [gd_vec_TileLayer]});
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        //center: [108.71511,33.09042],
+        //zoom: 11,
+		extent:{
+			xmin: 8182109,
+			ymin: 700650,
+			xmax: 15037984,
+			ymax: 7053031,
+			spatialReference: {wkid:102100}
+		}
+      });
+	  
+	  view.ui.add(
+		new Search({view:view}),
+		"top-right"
+	  );
+	  
+	  view.when(function(){
+		view.popup.autoOpenEnabled = false;
+		let editor = new Editor({
+			view: view
+		});		
+		view.ui.add(editor, "bottom-right");
+	  });
+	  
+	  //河流
+	  var featureLayerRiver = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/RiverZone/FeatureServer/0"});
+	  
+	  //山东国道
+	  var featureLayerG = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/YellowRiver/FeatureServer/0"});
+	  //陕西国道
+	  //var featureLayerG = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/YellowRiver/FeatureServer/2"});
+	  
+	  //山东省道
+	  var featureLayerS = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/YellowRiver/FeatureServer/1"});
+	  //陕西省道
+	  //var featureLayerS = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/YellowRiver/FeatureServer/3"});
+	  
+	  //全国省界
+	  var featureLayerSJ = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/CN_REGION/FeatureServer/8"});
+	  //南阳实践 //capabilities.data.supportsAttachment
+	  var featureLayerNY0 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/0"});
+	  var featureLayerNY1 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/1"});
+	  var featureLayerNY2 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/2"});
+	  var featureLayerNY3 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/3"});
+	  var featureLayerNY4 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/4"});
+	  var featureLayerNY5 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/5"});
+	  var featureLayerNY6 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/6"});
+	  var featureLayerNY7 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/7"});
+	  var featureLayerNY8 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/8"});
+	  var featureLayerNY9 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/9"});
+	  var featureLayerNY10 = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/NP/FeatureServer/10"});
+	   	  	  
+	  map.add(featureLayerSJ);
+	  //map.add(featureLayerS);
+	  //map.add(featureLayerG);
+	  //map.add(featureLayerRiver);
+	  map.add(featureLayerNY10);
+	  map.add(featureLayerNY9);
+	  map.add(featureLayerNY8);
+	  map.add(featureLayerNY7);
+	  map.add(featureLayerNY6);
+	  map.add(featureLayerNY5);
+	  map.add(featureLayerNY4);
+	  map.add(featureLayerNY3);
+	  map.add(featureLayerNY2);
+	  map.add(featureLayerNY1);
+	  map.add(featureLayerNY0);
+	  
+	  //鼠标拖动，view窗口变化，view2窗口随之变化
+	  view.on("drag", function(){						
+		var polygon = new Polygon({
+			hasZ: false,
+			hasM: false,
+			rings: [[view.extent.extent.xmin, view.extent.extent.ymax],[view.extent.extent.xmax, view.extent.extent.ymax],
+					[view.extent.extent.xmax, view.extent.extent.ymin],[view.extent.extent.xmax, view.extent.extent.ymax]],
+			spatialReference: {wkid:102100}
+		});		
+		view2.goTo({
+			target: polygon,
+			zoom: view.zoom
+		}).catch(function(error){
+			if(error.name!="AbortError"){
+				console.error(error);			
+			}
+		});
+	  });
+	  
+	  //鼠标滚动，view窗口缩放时，view2窗口随之缩放
+	  view.on("mouse-wheel", function(){
+		var polygon = new Polygon({
+			hasZ: false,
+			hasM: false,
+			rings: [[view.extent.extent.xmin, view.extent.extent.ymax],[view.extent.extent.xmax, view.extent.extent.ymax],
+					[view.extent.extent.xmax, view.extent.extent.ymin],[view.extent.extent.xmax, view.extent.extent.ymax]],
+			spatialReference: {wkid: 102100}
+		});
+		console.log("view zoom: "+view.zoom);
+		view2.goTo({
+			target: polygon,
+			zoom: view.zoom
+		}).catch(function(error){
+			if(error.name!="AbortError"){
+				console.error(error);			
+			}
+		});
+		console.log("view2 zoom: "+view2.zoom);
+	  });
+	  
+	  //鼠标拖动，view2窗口变化，view窗口随之变化
+	  view2.on("drag", function(){
+		var polygon = new Polygon({
+			hasZ: false,
+			hasM: false,
+			rings: [[view2.extent.extent.xmin, view2.extent.extent.ymax],[view2.extent.extent.xmax, view2.extent.extent.ymax],
+					[view2.extent.extent.xmax, view2.extent.extent.ymin],[view2.extent.extent.xmax, view2.extent.extent.ymax]],
+			spatialReference:{wkid:102100}
+		});
+		view.goTo({
+			target: polygon,
+			zoom: view2.zoom
+		}).catch(function(error){
+			if(error.name!="AbortError"){
+				console.error(error);			
+			}
+		});
+	  });
+	  
+	  //鼠标滚动，view2窗口缩放，view窗口随之缩放
+	  view2.on("mouse-wheel", function(){
+		var polygon = new Polygon({
+			hasZ: false,
+			hasM: false,
+			rings: [[view2.extent.extent.xmin, view2.extent.extent.ymax],[view2.extent.extent.xmax, view2.extent.extent.ymax],
+					[view2.extent.extent.xmax, view2.extent.extent.ymin],[view2.extent.extent.xmax, view2.extent.extent.ymax]],
+			spatialReference:{wkid:102100}
+		});
+		view.goTo({
+			//center: [115.1,39.6]
+			target: polygon,
+			zoom: view2.zoom
+		}).catch(function(error){
+			if(error.name!="AbortError"){
+				console.error(error);			
+			}
+		});
+	  });
+	  
+	  /**
+	  
+	  view.on("mouse-move", function(){
+		
+	  });**/
+    });
+  </script>
+</head>
+<body>
+  <table width="1700px" height="950px">
+	<tr >
+		<td ><div id="viewDiv2"></div></td>
+		<td ><div id="viewDiv"></div><td/>
+	</tr>
+  </table>
+  <div id="editorDiv"></div>
+</body>
+</html>

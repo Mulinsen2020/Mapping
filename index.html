@@ -1,0 +1,132 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ArcGIS API for JavaScript Hello World App</title>
+  <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+	.esri-editor .esri-item-list_scroller{
+		max-height:350px;
+	}
+  </style>  
+  <script type="text/javascript">
+	var dojoConfig = {
+		async: false, //是否异步
+		parseOnLoad: true,
+		packages: [{ //解释：require(["js/.."],function(){}) 中  js/ 即为 location的值
+			name: "/js",
+			location: location.pathname.replace(/\/[^/]*$/,'')+'/js' ////对应的路径
+		}]
+	}
+  </script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.18/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.18/"></script>
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+	  "esri/layers/FeatureLayer",
+	  "esri/widgets/Search",
+	  "esri/symbols/SimpleFillSymbol",
+	  "esri/renderers/UniqueValueRenderer",
+	  "esri/widgets/Editor",
+	  "esri/geometry/Extent",
+	  "esri/geometry/Point",
+	  "esri/geometry/Polyline",
+	  "esri/geometry/Polygon",
+	  "esri/layers/MapImageLayer",
+	  "dojo/domReady!"
+    ], function(Map, MapView,FeatureLayer,Search,SimpleFillSymbol,UniqueValueRenderer,
+	Editor,Extent,Point,Polyline,Polygon,MapImageLayer) {
+		/**const labelClass = {
+			symbol: {
+				type: "text",
+				color: "red",
+				font: {
+					family: "Merriweather",
+					size: 12,
+					weight: "bold"
+				}
+			},
+			labelPlacement:"always-horizontal",
+			labelExpressionInfo: {
+				expression: "$feature.REALM_NAME"
+			}			
+		};**/
+	  //const cdmap = ElevationLayer(url: "http://182.150.31.84:20012/arcgis/rest/services/ESRI/%E5%8C%97%E4%BA%AC%E8%B0%83%E7%94%A8%E6%9C%8D%E5%8A%A11017/MapServer");
+	  var layer = new MapImageLayer({
+		url: "http://182.150.31.84:20012/arcgis/rest/services/ESRI/%E5%8C%97%E4%BA%AC%E8%B0%83%E7%94%A8%E6%9C%8D%E5%8A%A11017/MapServer", 
+		title: "bout",
+		sublayers: [{
+			id: 12,
+			title: "高新西区_轮廓线"
+			
+		},{
+			id: 13,
+			title: "高新南区_修改轮廓线"
+		},{
+			id: 14,
+			title: "天府新区_修改轮廓线"
+		},{
+			id: 15,
+			title: "高新东区轮廓线"
+		}]
+	});
+	  
+      var map = new Map({
+        basemap: "hybrid",
+		layers: [layer]
+      });
+	  
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [108.71511,33.09042],
+        zoom: 11,
+		/**extent:{
+			xmin: 82,
+			ymin: 12,
+			xmax: 125,
+			ymax: 46,
+			spatialReference: 4490
+		}**/
+      });
+	  
+	  
+	  view.ui.add(
+		new Search({view:view}),
+		"top-right"
+	  );
+	  
+	  view.when(function(){
+		view.popup.autoOpenEnabled = false;
+		let editor = new Editor({
+			view: view
+		});
+		
+		view.ui.add(editor, "bottom-right");
+	  });
+	  
+	  var featureLayerG = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/Ningxia/FeatureServer/0"});
+	  var featureLayerS = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/Ningxia/FeatureServer/1"});
+	  var featureLayerX = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/Ningxia/FeatureServer/2"});
+	  var featureLayerSJ = new FeatureLayer({url: "http://39.108.124.198:6080/arcgis/rest/services/CN_REGION/FeatureServer/8"});
+	  
+	  map.add(featureLayerSJ);	  	  
+	  map.add(featureLayerX);
+	  map.add(featureLayerS);	  
+	  map.add(featureLayerG);	  
+    });
+  </script>
+</head>
+<body>
+  <<div id="viewDiv"></div>
+  <div id="editorDiv"></div>
+</body>
+</html>
